@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Réunion Bingo</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0d10; --surface: #16161a; --surface2: #1e1e24;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+    --text: #f0efe8; --muted: #7a7a8a;
+    --accent: #c8f060; --accent2: #f0a040; --accent3: #f06070;
+    --font: 'Syne', sans-serif; --mono: 'DM Mono', monospace;
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem 1rem 4rem; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"); }
+  .wrap { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; }
+  header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; }
+  .logo-area h1 { font-size: clamp(2rem, 6vw, 3.2rem); font-weight: 800; line-height: 0.95; letter-spacing: -0.03em; text-transform: uppercase; }
+  .logo-area h1 span { color: var(--accent); }
+  .logo-area p { font-size: 0.78rem; color: var(--muted); margin-top: 0.5rem; letter-spacing: 0.08em; text-transform: uppercase; font-family: var(--mono); }
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .btn-regen { background: var(--accent); color: #0d0d10; border: none; border-radius: 10px; padding: 0.7rem 1.2rem; font-family: var(--font); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: transform 0.15s, background 0.15s; white-space: nowrap; }
+  .btn-regen:hover { background: #d4fc70; transform: scale(1.03); }
+  .btn-regen:active { transform: scale(0.97); }
+  .btn-share { background: transparent; color: var(--accent); border: 1px solid rgba(200,240,96,0.4); border-radius: 10px; padding: 0.5rem 1rem; font-family: var(--mono); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-share:hover { background: rgba(200,240,96,0.08); border-color: var(--accent); }
+  .btn-share.copied { color: var(--text); border-color: var(--border2); }
+  .seed-badge { font-size: 0.65rem; font-family: var(--mono); color: var(--muted); text-align: right; }
+  .seed-badge span { color: var(--text); }
+  .stats { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .stat { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem 1rem; text-align: center; }
+  .stat-val { font-size: 1.6rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+  .stat-val.accent { color: var(--accent); }
+  .stat-val.orange { color: var(--accent2); }
+  .stat-label { font-size: 0.65rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.07em; font-family: var(--mono); }
+  .grid { display: flex; flex-direction: column; gap: 6px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; transition: border-color 0.18s, background 0.18s; animation: fadeUp 0.3s both; }
+  .card:nth-child(1){animation-delay:.03s}.card:nth-child(2){animation-delay:.06s}.card:nth-child(3){animation-delay:.09s}.card:nth-child(4){animation-delay:.12s}.card:nth-child(5){animation-delay:.15s}.card:nth-child(6){animation-delay:.18s}.card:nth-child(7){animation-delay:.21s}.card:nth-child(8){animation-delay:.24s}.card:nth-child(9){animation-delay:.27s}.card:nth-child(10){animation-delay:.30s}
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .card.done { border-color: rgba(200,240,96,0.3); background: rgba(200,240,96,0.05); }
+  .card.done .word { text-decoration: line-through; color: var(--muted); }
+  .card.done .check { background: var(--accent) !important; border-color: var(--accent) !important; color: #0d0d10 !important; }
+  .check { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 700; color: transparent; transition: all 0.2s; cursor: pointer; }
+  .word { font-size: 0.92rem; font-weight: 600; color: var(--text); flex: 1; min-width: 0; cursor: pointer; }
+  .diff { font-size: 0.6rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 5px; font-weight: 500; border: 1px solid; flex-shrink: 0; }
+  .d1 { color: #7ec06a; border-color: rgba(126,192,106,0.3); background: rgba(126,192,106,0.08); }
+  .d2 { color: var(--accent2); border-color: rgba(240,160,64,0.3); background: rgba(240,160,64,0.08); }
+  .d3 { color: var(--accent3); border-color: rgba(240,96,112,0.3); background: rgba(240,96,112,0.08); }
+  .pts { font-size: 0.82rem; font-weight: 700; font-family: var(--mono); width: 32px; text-align: right; flex-shrink: 0; }
+  .pts.p1 { color: #7ec06a; }
+  .pts.p2 { color: var(--accent2); }
+  .pts.p3 { color: var(--accent3); }
+  .trig-wrap { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+  .trig-label { font-size: 0.6rem; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .trig-input { width: 44px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 0.78rem; font-weight: 500; padding: 4px 6px; text-align: center; text-transform: uppercase; outline: none; transition: border-color 0.15s; }
+  .trig-input:focus { border-color: var(--accent); }
+  .trig-input::placeholder { color: var(--muted); opacity: 0.5; font-size: 0.7rem; }
+  .lb-section { margin-top: 1.5rem; }
+  .lb-title { font-size: 0.72rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.75rem; }
+  .lb-empty { font-size: 0.8rem; color: var(--muted); font-family: var(--mono); padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; text-align: center; }
+  .lb-list { display: flex; flex-direction: column; gap: 5px; }
+  .lb-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+  .lb-rank { font-size: 0.75rem; width: 22px; text-align: center; flex-shrink: 0; }
+  .lb-trig { font-size: 0.95rem; font-weight: 700; font-family: var(--mono); color: var(--text); flex: 1; letter-spacing: 0.05em; }
+  .lb-words { font-size: 0.65rem; color: var(--muted); font-family: var(--mono); }
+  .lb-score { font-size: 1rem; font-weight: 800; color: var(--accent); font-family: var(--mono); }
+  .legend { display: flex; gap: 1rem; margin-top: 1.25rem; padding: 0.75rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; font-family: var(--mono); color: var(--muted); }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--accent); color: #0d0d10; font-family: var(--font); font-weight: 700; font-size: 0.85rem; padding: 0.6rem 1.3rem; border-radius: 99px; pointer-events: none; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); z-index: 100; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo-area">
+      <h1>Réunion<br><span>Bingo</span></h1>
+      <p>Placez les mots — marquez des points</p>
+    </div>
+    <div class="header-right">
+      <button class="btn-regen" onclick="newSeed()">↻ Nouveau tirage</button>
+      <button class="btn-share" id="btn-share" onclick="copyLink()">🔗 Copier le lien</button>
+      <div class="seed-badge">Tirage : <span id="seed-display">—</span></div>
+    </div>
+  </header>
+  <div class="stats">
+    <div class="stat"><div class="stat-val accent" id="s-placed">0</div><div class="stat-label">placés</div></div>
+    <div class="stat"><div class="stat-val orange" id="s-pts">0</div><div class="stat-label">pts gagnés</div></div>
+    <div class="stat"><div class="stat-val" id="s-total">0</div><div class="stat-label">pts en jeu</div></div>
+    <div class="stat"><div class="stat-val" id="s-pct">0%</div><div class="stat-label">complétion</div></div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#7ec06a"></div>Facile — 1 pt</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f0a040"></div>Moyen — 2 pts</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f06070"></div>Trash — 3–10 pts</div>
+  </div>
+  <div class="lb-section">
+    <div class="lb-title">🏆 Classement — qui a osé ?</div>
+    <div id="leaderboard"><div class="lb-empty">Aucun point attribué pour l'instant</div></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const WORDS = [
+
+  // ══════════════════════════════════════════════
+  // FACILE — 1 pt  (mots solo qui sonnent bizarre)
+  // ══════════════════════════════════════════════
+
+  // Corps / sexuel
+  { word: "malaxer", pts: 1, diff: 1 },
+  { word: "enfiler", pts: 1, diff: 1 },
+  { word: "gonfler", pts: 1, diff: 1 },
+  { word: "palper", pts: 1, diff: 1 },
+  { word: "pomper", pts: 1, diff: 1 },
+  { word: "lisser", pts: 1, diff: 1 },
+  { word: "pincer", pts: 1, diff: 1 },
+  { word: "tâter", pts: 1, diff: 1 },
+  { word: "tripoter", pts: 1, diff: 1 },
+  { word: "assouplir", pts: 1, diff: 1 },
+  { word: "exciter", pts: 1, diff: 1 },
+  { word: "caresser", pts: 1, diff: 1 },
+  { word: "frotter", pts: 1, diff: 1 },
+  { word: "masser", pts: 1, diff: 1 },
+  { word: "lécher", pts: 1, diff: 1 },
+  { word: "souffler dessus", pts: 1, diff: 1 },
+  { word: "étirer", pts: 1, diff: 1 },
+  { word: "pénétrer", pts: 1, diff: 1 },
+
+  // Violence / boucherie
+  { word: "massacrer", pts: 1, diff: 1 },
+  { word: "écraser", pts: 1, diff: 1 },
+  { word: "trancher", pts: 1, diff: 1 },
+  { word: "fracasser", pts: 1, diff: 1 },
+  { word: "sabrer", pts: 1, diff: 1 },
+  { word: "dépecer", pts: 1, diff: 1 },
+  { word: "broyer", pts: 1, diff: 1 },
+  { word: "éventrer", pts: 1, diff: 1 },
+  { word: "lacérer", pts: 1, diff: 1 },
+  { word: "trucider", pts: 1, diff: 1 },
+  { word: "atomiser", pts: 1, diff: 1 },
+  { word: "démembrer", pts: 1, diff: 1 },
+  { word: "étrangler", pts: 1, diff: 1 },
+
+  // Scato / technique crade
+  { word: "évacuer", pts: 1, diff: 1 },
+  { word: "purger", pts: 1, diff: 1 },
+  { word: "vidanger", pts: 1, diff: 1 },
+  { word: "déboucher", pts: 1, diff: 1 },
+  { word: "suinter", pts: 1, diff: 1 },
+  { word: "dégorger", pts: 1, diff: 1 },
+  { word: "macérer", pts: 1, diff: 1 },
+  { word: "fermenter", pts: 1, diff: 1 },
+  { word: "gicler", pts: 1, diff: 1 },
+  { word: "déborder", pts: 1, diff: 1 },
+  { word: "suppurer", pts: 1, diff: 1 },
+  { word: "écouler", pts: 1, diff: 1 },
+  { word: "dégouliner", pts: 1, diff: 1 },
+  { word: "sucer", pts: 1, diff: 1 },
+
+  // Chelou divers
+  { word: "flairer", pts: 1, diff: 1 },
+  { word: "humer", pts: 1, diff: 1 },
+  { word: "lécher", pts: 1, diff: 1 },
+  { word: "mâchonner", pts: 1, diff: 1 },
+  { word: "régurgiter", pts: 1, diff: 1 },
+  { word: "ingurgiter", pts: 1, diff: 1 },
+  { word: "expectorer", pts: 1, diff: 1 },
+  { word: "flatuler", pts: 1, diff: 1 },
+  { word: "se dilater", pts: 1, diff: 1 },
+  { word: "se contracter", pts: 1, diff: 1 },
+  { word: "se ratatiner", pts: 1, diff: 1 },
+  { word: "ramollir", pts: 1, diff: 1 },
+  { word: "durcir", pts: 1, diff: 1 },
+  { word: "turgescent", pts: 1, diff: 1 },
+  { word: "tumescent", pts: 1, diff: 1 },
+  { word: "lubrifié", pts: 1, diff: 1 },
+  { word: "humide", pts: 1, diff: 1 },
+  { word: "moite", pts: 1, diff: 1 },
+  { word: "visqueux", pts: 1, diff: 1 },
+  { word: "glaireux", pts: 1, diff: 1 },
+  { word: "putride", pts: 1, diff: 1 },
+  { word: "fétide", pts: 1, diff: 1 },
+  { word: "rance", pts: 1, diff: 1 },
+
+  // ══════════════════════════════════════════════
+  // MOYEN — 2 pts  (expressions à amener naturellement)
+  // ══════════════════════════════════════════════
+
+  // Sexuel
+  { word: "faire rentrer", pts: 2, diff: 2 },
+  { word: "bien lubrifier", pts: 2, diff: 2 },
+  { word: "tenir fermement", pts: 2, diff: 2 },
+  { word: "faire monter la pression", pts: 2, diff: 2 },
+  { word: "retirer doucement", pts: 2, diff: 2 },
+  { word: "bien humidifier", pts: 2, diff: 2 },
+  { word: "appuyer là où ça fait mal", pts: 2, diff: 2 },
+  { word: "on va se toucher dessus", pts: 2, diff: 2 },
+  { word: "faut pas lâcher maintenant", pts: 2, diff: 2 },
+  { word: "je suis chaud pour aller jusqu'au bout", pts: 2, diff: 2 },
+  { word: "aller chercher au fond", pts: 2, diff: 2 },
+  { word: "finir proprement", pts: 2, diff: 2 },
+  { word: "c'est mou du genou", pts: 2, diff: 2 },
+  { word: "faut que ça rentre", pts: 2, diff: 2 },
+  { word: "on va bien l'enfoncer", pts: 2, diff: 2 },
+  { word: "tenir la longueur", pts: 2, diff: 2 },
+  { word: "ça glisse tout seul", pts: 2, diff: 2 },
+
+  // Violence
+  { word: "mettre une raclée", pts: 2, diff: 2 },
+  { word: "démolir le truc", pts: 2, diff: 2 },
+  { word: "viser entre les deux", pts: 2, diff: 2 },
+  { word: "finir d'abattre", pts: 2, diff: 2 },
+  { word: "leur mettre la tête dedans", pts: 2, diff: 2 },
+  { word: "les étrangler sur les délais", pts: 2, diff: 2 },
+  { word: "égorger le planning", pts: 2, diff: 2 },
+  { word: "on leur tord le bras", pts: 2, diff: 2 },
+  { word: "on les a saignés à blanc", pts: 2, diff: 2 },
+
+  // Scato
+  { word: "ça commence à sentir", pts: 2, diff: 2 },
+  { word: "y'a eu une fuite", pts: 2, diff: 2 },
+  { word: "faut nettoyer derrière", pts: 2, diff: 2 },
+  { word: "ça déborde de partout", pts: 2, diff: 2 },
+  { word: "c'est bouché à l'entrée", pts: 2, diff: 2 },
+  { word: "on macère dans le problème", pts: 2, diff: 2 },
+  { word: "ça fermente depuis un moment", pts: 2, diff: 2 },
+  { word: "faut vider ça", pts: 2, diff: 2 },
+
+  // Chelou situationnel
+  { word: "prendre ça en main", pts: 2, diff: 2 },
+  { word: "regarder dans le blanc des yeux", pts: 2, diff: 2 },
+  { word: "mettre les doigts dedans", pts: 2, diff: 2 },
+  { word: "on va explorer ça ensemble", pts: 2, diff: 2 },
+  { word: "gratter sous la surface", pts: 2, diff: 2 },
+  { word: "sentir le vent tourner", pts: 2, diff: 2 },
+  { word: "humer l'air ambiant", pts: 2, diff: 2 },
+  { word: "flairer la bonne piste", pts: 2, diff: 2 },
+  { word: "tâter le terrain", pts: 2, diff: 2 },
+  { word: "mâcher le travail", pts: 2, diff: 2 },
+  { word: "avaler la pilule", pts: 2, diff: 2 },
+  { word: "digérer l'information", pts: 2, diff: 2 },
+  { word: "ruminer le sujet", pts: 2, diff: 2 },
+  { word: "régurgiter les specs", pts: 2, diff: 2 },
+  { word: "transpirer sur le sujet", pts: 2, diff: 2 },
+  { word: "suer sang et eau", pts: 2, diff: 2 },
+  { word: "accoucher d'une solution", pts: 2, diff: 2 },
+  { word: "pondre quelque chose", pts: 2, diff: 2 },
+  { word: "mettre bas le projet", pts: 2, diff: 2 },
+  { word: "nourrir le backlog", pts: 2, diff: 2 },
+  { word: "faire grossir le truc", pts: 2, diff: 2 },
+  { word: "enfanter une idée", pts: 2, diff: 2 },
+
+  // ══════════════════════════════════════════════
+  // TRASH — 3 à 10 pts  (à placer avec un visage de marbre)
+  // ══════════════════════════════════════════════
+
+  // 3 pts
+  { word: "on va se faire une petite pénétration de marché", pts: 3, diff: 3 },
+  { word: "on nage en plein dedans", pts: 3, diff: 3 },
+  { word: "je l'ai pas vu venir celui-là", pts: 3, diff: 3 },
+  { word: "on a été pris à froid", pts: 3, diff: 3 },
+  { word: "c'est bien ferme comme décision", pts: 3, diff: 3 },
+  { word: "ça sent le sapin ce planning", pts: 3, diff: 3 },
+  { word: "on s'est bien fait avoir dans le dos", pts: 3, diff: 3 },
+  { word: "on est en train de se noyer dans les specs", pts: 3, diff: 3 },
+  { word: "faut pas qu'on se retrouve à poil", pts: 3, diff: 3 },
+  { word: "on a mordu la poussière", pts: 3, diff: 3 },
+  { word: "c'est complètement ramolli comme argument", pts: 3, diff: 3 },
+  { word: "il a sorti ça de nulle part", pts: 3, diff: 3 },
+  { word: "on s'est fait rentrer dedans", pts: 3, diff: 3 },
+  { word: "c'est gonflé comme approche", pts: 3, diff: 3 },
+  { word: "ça pue la mauvaise foi", pts: 3, diff: 3 },
+
+  // 4 pts
+  { word: "faut qu'on s'introduise en douceur", pts: 4, diff: 3 },
+  { word: "on a bien senti la résistance", pts: 4, diff: 3 },
+  { word: "on leur a mis la tête sous l'eau", pts: 4, diff: 3 },
+  { word: "on a complètement détruit leur argumentaire", pts: 4, diff: 3 },
+  { word: "ça nous pète dans les mains", pts: 4, diff: 3 },
+  { word: "y'a vraiment quelque chose qui déconne là-dedans", pts: 4, diff: 3 },
+  { word: "faut savoir quand s'arrêter", pts: 4, diff: 3 },
+  { word: "on s'est tous retrouvés en slip", pts: 4, diff: 3 },
+  { word: "on leur a tout mis dans la gueule", pts: 4, diff: 3 },
+  { word: "c'est dur à avaler mais faut le faire", pts: 4, diff: 3 },
+  { word: "on a accouché d'une souris", pts: 4, diff: 3 },
+  { word: "c'est mou, ça tient pas la route", pts: 4, diff: 3 },
+  { word: "on a gratté jusqu'à l'os", pts: 4, diff: 3 },
+  { word: "ça bande bien côté technique", pts: 4, diff: 3 },
+  { word: "le projet est complètement flaccide", pts: 4, diff: 3 },
+  { word: "on les a pris la main dans le sac", pts: 4, diff: 3 },
+  { word: "on a tordu le truc dans tous les sens", pts: 4, diff: 3 },
+  { word: "c'est glissant comme terrain", pts: 4, diff: 3 },
+
+  // 5 pts
+  { word: "faut égorger le budget là", pts: 5, diff: 3 },
+  { word: "on aurait dû prendre quelque chose de plus petit", pts: 5, diff: 3 },
+  { word: "ça a duré plus longtemps que prévu", pts: 5, diff: 3 },
+  { word: "c'est sorti tout seul à la fin", pts: 5, diff: 3 },
+  { word: "c'est serré mais ça passe", pts: 5, diff: 3 },
+  { word: "j'ai mis le doigt dessus", pts: 5, diff: 3 },
+  { word: "on va leur montrer qu'on sait faire ça proprement", pts: 5, diff: 3 },
+  { word: "faut se lubrifier avant de rentrer là-dedans", pts: 5, diff: 3 },
+  { word: "c'est complètement flasque comme réponse", pts: 5, diff: 3 },
+  { word: "on a frotté jusqu'à ce que ça brille", pts: 5, diff: 3 },
+  { word: "le client a joui prématurément", pts: 5, diff: 3 },
+  { word: "on était tous collants à la fin de la réunion", pts: 5, diff: 3 },
+  { word: "c'est sorti dans la douleur", pts: 5, diff: 3 },
+  { word: "faut pas qu'on se fasse dépuceler sur ce budget", pts: 5, diff: 3 },
+  { word: "on a tordu le budget jusqu'au sang", pts: 5, diff: 3 },
+  { word: "ça a germé dans un endroit sombre", pts: 5, diff: 3 },
+  { word: "on a mis les deux mains dedans", pts: 5, diff: 3 },
+
+  // 6 pts
+  { word: "la prochaine fois on mettra de la graisse", pts: 6, diff: 3 },
+  { word: "faut être deux pour tenir ça", pts: 6, diff: 3 },
+  { word: "on va devoir forcer l'entrée", pts: 6, diff: 3 },
+  { word: "on a forcé un peu trop fort", pts: 6, diff: 3 },
+  { word: "je vais les saigner sur ce devis", pts: 6, diff: 3 },
+  { word: "on va les faire se mordre la queue", pts: 6, diff: 3 },
+  { word: "c'est tellement compressé que ça suinte", pts: 6, diff: 3 },
+  { word: "on leur a mis la tête dans le guidon", pts: 6, diff: 3 },
+  { word: "faut y aller à blanc sur ce sujet", pts: 6, diff: 3 },
+  { word: "c'était mouillé mais on a tenu", pts: 6, diff: 3 },
+  { word: "on leur a fourré dans le budget sans prévenir", pts: 6, diff: 3 },
+  { word: "ça a gicle dans tous les sens pendant la démo", pts: 6, diff: 3 },
+  { word: "c'est comme pisser dans un violon", pts: 6, diff: 3 },
+
+  // 7 pts
+  { word: "t'as senti quand ça a lâché ?", pts: 7, diff: 3 },
+  { word: "ça coulait tout seul à la fin", pts: 7, diff: 3 },
+  { word: "je sens qu'on est à deux doigts", pts: 7, diff: 3 },
+  { word: "c'était dans tous les sens à un moment", pts: 7, diff: 3 },
+  { word: "faut pas se laisser pénétrer par leurs arguments", pts: 7, diff: 3 },
+  { word: "on a gratté jusqu'à faire saigner le scope", pts: 7, diff: 3 },
+  { word: "la roadmap est complètement flasque et pendante", pts: 7, diff: 3 },
+  { word: "on a tous transpiré sur ce livrable", pts: 7, diff: 3 },
+  { word: "ça s'est dégonflé en plein milieu de la présentation", pts: 7, diff: 3 },
+  { word: "on a bien massé l'ego du client", pts: 7, diff: 3 },
+  { word: "c'est sorti de nulle part, bien droit devant nous", pts: 7, diff: 3 },
+
+  // 8 pts
+  { word: "j'aime bien quand c'est bien tendu", pts: 8, diff: 3 },
+  { word: "c'était chaud mais on est allés jusqu'au bout", pts: 8, diff: 3 },
+  { word: "on a bien bossé, c'était tendu", pts: 8, diff: 3 },
+  { word: "faut pas laisser ça traîner, ça va macérer", pts: 8, diff: 3 },
+  { word: "on a vraiment mis la main à la pâte et c'était gluant", pts: 8, diff: 3 },
+  { word: "le livrable est sorti tout chaud et bien juteux", pts: 8, diff: 3 },
+  { word: "on s'est tous retrouvés à poil devant le client", pts: 8, diff: 3 },
+  { word: "c'était ferme, bien droit, exactement ce qu'il fallait", pts: 8, diff: 3 },
+  { word: "on a glissé ça en douceur dans la proposition commerciale", pts: 8, diff: 3 },
+
+  // 9–10 pts — niveau final boss
+  { word: "on était tous en sueur mais satisfaits", pts: 9, diff: 3 },
+  { word: "c'était bien huilé, bien profond, bien rythmé", pts: 9, diff: 3 },
+  { word: "on leur a fait avaler quelque chose de vraiment gros", pts: 9, diff: 3 },
+  { word: "on a tenu la cadence jusqu'à l'éjaculation du livrable final", pts: 10, diff: 3 },
+  { word: "c'était mou au départ mais ça a fini bien dur et bien rentré", pts: 10, diff: 3 },
+  { word: "on leur a présenté quelque chose de bien chaud et bien humide", pts: 10, diff: 3 },
+  { word: "le client a été pénétré par notre proposition de valeur", pts: 10, diff: 3 },
+  { word: "à la fin tout le monde était épuisé mais ça avait bien giclé", pts: 10, diff: 3 },
+];
+
+const diffLabel = ["","Facile","Moyen","Trash"];
+const diffClass = ["","d1","d2","d3"];
+const ptsClass  = p => p <= 1 ? "p1" : p <= 2 ? "p2" : "p3";
+
+// État global — jamais réinitialisé partiellement
+let current = [];
+let toastTimer;
+
+// ── Seed ──────────────────────────────────────────────
+function getSeedFromURL() { return new URLSearchParams(window.location.search).get('seed'); }
+function setSeedInURL(seed) { const u = new URL(window.location.href); u.searchParams.set('seed', seed); window.history.replaceState({}, '', u); }
+function randomSeed() { return Math.random().toString(36).slice(2, 8).toUpperCase(); }
+
+function seededRandom(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
+  return () => { h ^= h << 13; h ^= h >> 17; h ^= h << 5; return (h >>> 0) / 4294967296; };
+}
+
+function shuffleWithSeed(arr, rng) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+function newSeed() { const s = randomSeed(); setSeedInURL(s); loadFromSeed(s); }
+
+function loadFromSeed(seed) {
+  document.getElementById('seed-display').textContent = seed;
+  const rng = seededRandom(seed);
+  const easy = shuffleWithSeed(WORDS.filter(w => w.diff === 1), rng).slice(0, 3);
+  const med  = shuffleWithSeed(WORDS.filter(w => w.diff === 2), rng).slice(0, 4);
+  const hard = shuffleWithSeed(WORDS.filter(w => w.diff === 3), rng).slice(0, 3);
+  current = shuffleWithSeed([...easy, ...med, ...hard], rng).map(w => ({ ...w, done: false, trig: '' }));
+  renderAll();
+}
+
+// ── Partage ───────────────────────────────────────────
+function copyLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    const btn = document.getElementById('btn-share');
+    btn.textContent = '✓ Lien copié !'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '🔗 Copier le lien'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── Logique scores — recalculé depuis current à chaque fois ──
+function getScores() {
+  const scores = {};
+  current.forEach(w => {
+    if (w.done && w.trig) {
+      if (!scores[w.trig]) scores[w.trig] = { pts: 0, words: 0 };
+      scores[w.trig].pts += w.pts;
+      scores[w.trig].words++;
+    }
+  });
+  return scores;
+}
+
+// ── Interactions ──────────────────────────────────────
+function setTrig(i, val) {
+  current[i].trig = val.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+  updateStats();
+  updateLeaderboard();
+}
+
+function toggle(i) {
+  if (!current[i].done && !current[i].trig) {
+    const inp = document.getElementById('trig-' + i);
+    if (inp) inp.focus();
+    showToast('Entre un trigramme d\'abord !');
+    return;
+  }
+  current[i].done = !current[i].done;
+
+  // mettre à jour juste la carte visuellement
+  const card = document.getElementById('card-' + i);
+  const chk  = document.getElementById('chk-' + i);
+  const wrd  = document.getElementById('wrd-' + i);
+  if (current[i].done) {
+    card.classList.add('done');
+    chk.textContent = '✓';
+  } else {
+    card.classList.remove('done');
+    chk.textContent = '';
+  }
+
+  updateStats();
+  updateLeaderboard();
+  if (current[i].done) showToast("+" + current[i].pts + " pt" + (current[i].pts > 1 ? "s" : "") + " pour " + current[i].trig + " !");
+}
+
+function updateStats() {
+  let placed = 0, earned = 0, total = 0;
+  current.forEach(w => { total += w.pts; if (w.done) { placed++; earned += w.pts; } });
+  document.getElementById('s-placed').textContent = placed;
+  document.getElementById('s-pts').textContent    = earned;
+  document.getElementById('s-total').textContent  = total;
+  document.getElementById('s-pct').textContent    = total > 0 ? Math.round((earned / total) * 100) + '%' : '0%';
+}
+
+function updateLeaderboard() {
+  const scores = getScores();
+  const lb = document.getElementById('leaderboard');
+  const entries = Object.entries(scores).sort((a, b) => b[1].pts - a[1].pts);
+  if (!entries.length) { lb.innerHTML = '<div class="lb-empty">Aucun point attribué pour l\'instant</div>'; return; }
+  const medals = ['🥇','🥈','🥉'];
+  lb.innerHTML = '<div class="lb-list">' + entries.map(([trig, data], idx) => `
+    <div class="lb-row">
+      <div class="lb-rank">${medals[idx] || (idx + 1)}</div>
+      <div class="lb-trig">${trig}</div>
+      <div class="lb-words">${data.words} mot${data.words > 1 ? 's' : ''}</div>
+      <div class="lb-score">${data.pts} pt${data.pts > 1 ? 's' : ''}</div>
+    </div>`).join('') + '</div>';
+}
+
+// ── Rendu initial complet ─────────────────────────────
+function renderAll() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  current.forEach((w, i) => {
+    const card = document.createElement('div');
+    card.className = 'card' + (w.done ? ' done' : '');
+    card.id = 'card-' + i;
+
+    const check = document.createElement('div');
+    check.className = 'check';
+    check.id = 'chk-' + i;
+    if (w.done) check.textContent = '✓';
+    check.onclick = e => { e.stopPropagation(); toggle(i); };
+
+    const word = document.createElement('div');
+    word.className = 'word';
+    word.id = 'wrd-' + i;
+    word.textContent = w.word;
+    word.onclick = () => toggle(i);
+
+    const diff = document.createElement('span');
+    diff.className = 'diff ' + diffClass[w.diff];
+    diff.textContent = diffLabel[w.diff];
+
+    const pts = document.createElement('span');
+    pts.className = 'pts ' + ptsClass(w.pts);
+    pts.textContent = w.pts + ' pt' + (w.pts > 1 ? 's' : '');
+
+    const trigWrap = document.createElement('div');
+    trigWrap.className = 'trig-wrap';
+    const trigLabel = document.createElement('span');
+    trigLabel.className = 'trig-label';
+    trigLabel.textContent = 'par';
+    const inp = document.createElement('input');
+    inp.className = 'trig-input';
+    inp.id = 'trig-' + i;
+    inp.maxLength = 3;
+    inp.placeholder = 'AAA';
+    inp.value = w.trig;
+    inp.addEventListener('click', e => e.stopPropagation());
+    inp.addEventListener('input', e => setTrig(i, e.target.value));
+    trigWrap.append(trigLabel, inp);
+
+    card.append(check, word, diff, pts, trigWrap);
+    grid.appendChild(card);
+  });
+  updateStats();
+  updateLeaderboard();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── Init ──────────────────────────────────────────────
+const initSeed = getSeedFromURL() || randomSeed();
+setSeedInURL(initSeed);
+loadFromSeed(initSeed);
+</script>
+</body>
+</html>
