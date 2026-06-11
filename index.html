@@ -420,9 +420,9 @@ const medals    = ['🥇','🥈','🥉'];
 let current = [], toastTimer, currentSeed = '';
 
 // ── Seed ──────────────────────────────────────────────────────
-function getSeedFromURL() { return new URLSearchParams(window.location.search).get('seed'); }
+function getSeedFromURL() { const s = new URLSearchParams(window.location.search).get('seed'); return s ? decodeURIComponent(s) : null; }
 function setSeedInURL(seed) { const u = new URL(window.location.href); u.searchParams.set('seed', seed); window.history.replaceState({}, '', u); }
-function randomSeed() { return Math.random().toString(36).slice(2, 8).toUpperCase(); }
+function randomSeed() { const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from({length:6},()=>c[Math.floor(Math.random()*c.length)]).join(''); }
 function seededRandom(seed) {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
