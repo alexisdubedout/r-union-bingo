@@ -137,13 +137,14 @@ const SB_URL = 'https://dtymxdgixzvrmkddgdzw.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0eW14ZGdpeHp2cm1rZGRnZHp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNjY1MjYsImV4cCI6MjA5Njc0MjUyNn0.HtPPIviRie8fDioAP4vN8rWHuHOyBp0ocby5y82Izf0';
 
 async function sbFetch(path, opts = {}) {
+  const method = opts.method || 'GET';
   const res = await fetch(SB_URL + path, {
     ...opts,
     headers: {
       'apikey': SB_KEY,
       'Authorization': 'Bearer ' + SB_KEY,
       'Content-Type': 'application/json',
-      'Prefer': 'return=minimal',
+      ...(method !== 'GET' ? { 'Prefer': 'return=minimal' } : {}),
       ...(opts.headers || {})
     }
   });
@@ -152,7 +153,8 @@ async function sbFetch(path, opts = {}) {
     throw new Error(err);
   }
   const text = await res.text();
-  return text ? JSON.parse(text) : null;
+  if (!text || text === '') return method === 'GET' ? [] : null;
+  return JSON.parse(text);
 }
 
 async function insertScore(session_id, trigramme, mot, points) {
@@ -169,15 +171,11 @@ async function deleteScore(session_id, trigramme, mot) {
 }
 
 async function fetchSessionScores(session_id) {
-  return sbFetch(`/rest/v1/scores?session_id=eq.${encodeURIComponent(session_id)}&select=trigramme,mot,points`, {
-    headers: { 'Prefer': 'return=representation' }
-  });
+  return sbFetch(`/rest/v1/scores?session_id=eq.${encodeURIComponent(session_id)}&select=trigramme,mot,points`);
 }
 
 async function fetchGlobalScores() {
-  return sbFetch('/rest/v1/scores?select=trigramme,points', {
-    headers: { 'Prefer': 'return=representation' }
-  });
+  return sbFetch('/rest/v1/scores?select=trigramme,points');
 }
 
 // ── Banque de mots ────────────────────────────────────────────
